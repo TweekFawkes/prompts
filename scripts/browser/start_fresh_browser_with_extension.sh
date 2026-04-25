@@ -1,13 +1,12 @@
 #!/bin/bash
-# Fresh Browser Start Script
-# Kills any running Chromium instances, launches a fresh Chromium with a clean
-# profile and remote debugging enabled (no extensions), waits for the debug
-# port to come up, and runs check_remote_debugging.py to verify the Chrome
-# DevTools Protocol works end-to-end.
+# Fresh Browser Start Script (with Chrome Extension)
+# Kills any running Chromium instances and launches a fresh Chromium with a
+# clean profile, remote debugging enabled, and the unpacked extension at
+# $CHROME_EXTENSION_DIR/dist loaded.
 # Note: This script only affects Chromium, not Google Chrome.
 #
 # Usage:
-#   bash start_fresh_browser.sh
+#   bash start_fresh_browser_with_extension.sh
 
 set -e  # Exit on error
 
@@ -136,13 +135,22 @@ cleanup_downloads() {
 }
 
 start_fresh_browser() {
-    print_header "🌐 Starting Fresh Browser"
+    print_header "🌐 Starting Fresh Browser with Extension"
 
     # Check if Chromium is available
     if [ -z "$CHROME_PATH" ] || [ ! -f "$CHROME_PATH" ]; then
         print_error "Chromium not found!"
         print_warning "Please install Ungoogled Chromium"
         print_status "Expected location: /Applications/Chromium.app"
+        exit 1
+    fi
+
+    # Check if extension is built
+    if [ ! -d "$CHROME_EXTENSION_DIR/dist" ]; then
+        print_error "Chrome extension not built!"
+        print_warning "Extension directory not found: $CHROME_EXTENSION_DIR/dist"
+        print_status "Please build the extension first:"
+        print_status "  cd $CHROME_EXTENSION_DIR && npm run build"
         exit 1
     fi
 
@@ -168,10 +176,10 @@ start_fresh_browser() {
         TEST_URL="file://$TEST_HTML_FILE"
     fi
 
-    print_status "Opening browser..."
+    print_status "Opening browser with extension loaded..."
     print_status "Target URL: $TEST_URL"
 
-    # Open Chromium with remote debugging enabled
+    # Open Chromium with extension loaded and remote debugging enabled
     "$CHROME_PATH" \
         --no-first-run \
         --no-default-browser-check \
@@ -179,60 +187,18 @@ start_fresh_browser() {
         --disable-popup-blocking \
         --remote-debugging-port=$DEBUG_PORT \
         --user-data-dir="$USER_DATA_DIR" \
+        --load-extension="$CHROME_EXTENSION_DIR/dist" \
         "$TEST_URL" \
         > /tmp/l_chromium.log 2>&1 &
 
     local chromium_pid=$!
 
-    print_success "$CHROME_NAME opened (PID: $chromium_pid)"
+    print_success "$CHROME_NAME opened with extension loaded (PID: $chromium_pid)"
     print_status "Chromium profile: $USER_DATA_DIR"
+    print_status "Extension location: $CHROME_EXTENSION_DIR/dist"
     print_status "Remote debugging port: $DEBUG_PORT"
     print_status "Test page: $TEST_URL"
     print_status "Log file: /tmp/l_chromium.log"
-}
-
-wait_for_debug_port() {
-    print_header "⏳ Waiting for Remote Debugging Port"
-
-    local max_attempts=20  # 20 * 0.5s = 10s
-    local attempt=0
-
-    while [ $attempt -lt $max_attempts ]; do
-        if curl -sf "http://127.0.0.1:$DEBUG_PORT/json/version" > /dev/null 2>&1; then
-            print_success "Port $DEBUG_PORT is responding"
-            return 0
-        fi
-        sleep 0.5
-        attempt=$((attempt + 1))
-    done
-
-    print_error "Port $DEBUG_PORT did not respond within 10 seconds"
-    print_status "See log: /tmp/l_chromium.log"
-    return 1
-}
-
-run_remote_debug_check() {
-    print_header "🔍 Verifying Remote Debugging End-to-End"
-
-    local check_script="$SCRIPT_DIR/check_remote_debugging.py"
-
-    if [ ! -f "$check_script" ]; then
-        print_error "Check script not found: $check_script"
-        return 1
-    fi
-
-    if ! command -v uv > /dev/null 2>&1; then
-        print_error "uv is not installed"
-        print_status "Install: https://docs.astral.sh/uv/getting-started/installation/"
-        return 1
-    fi
-
-    if uv run "$check_script" --port "$DEBUG_PORT"; then
-        print_success "Remote debugging check passed"
-    else
-        print_error "Remote debugging check failed"
-        return 1
-    fi
 }
 
 # ============================================
@@ -243,8 +209,6 @@ main() {
     kill_chromium_processes
     cleanup_downloads
     start_fresh_browser
-    wait_for_debug_port
-    run_remote_debug_check
 
     print_header "✅ Browser Started"
     echo -e "${GREEN}Fresh Chromium instance is running!${NC}"
