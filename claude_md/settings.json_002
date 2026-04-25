@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read(~/Documents/Code/**)",
+      "Edit(~/Documents/Code/**)",
+      "Write(~/Documents/Code/**)",
+      "WebFetch",
+      "Agent",
+      "mcp__*"
+    ],
+    "deny": [
+      "Read(~/Documents/Code/**/.env)",
+      "Read(~/Documents/Code/**/.env.*)",
+      "Read(~/Documents/Code/**/secrets/**)"
+    ],
+    "defaultMode": "auto"
+  },
+  "skipAutoPermissionPrompt": true,
+  "skipDangerousModePermissionPrompt": true
+}

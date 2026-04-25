@@ -1,0 +1,5 @@
+alias claude_install='curl -fsSL https://claude.ai/install.sh | bash'
+alias claude_update='claude update'
+alias claude_auto='claude --chrome --permission-mode auto --effort max --model opus --fallback-model sonnet'
+alias claude_dangerzone='claude --chrome --permission-mode bypassPermissions --effort max --model opus --fallback-model sonnet'
+# alias claude_dangerzone='claude --chrome --dangerously-skip-permissions --effort max --model opus --fallback-model sonnet'
