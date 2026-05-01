@@ -1,5 +1,16 @@
 # Short, imperative title for the ticket
 
+<!--
+Optional YAML frontmatter to override SDK_OPTIONS_BASE for this ticket.
+Delete this block (or the whole `---` … `---` fence) if you don't need it.
+See README §"Per-ticket overrides" for the full list of recognized keys.
+
+---
+model: sonnet
+effort: low
+---
+-->
+
 **Status:** Open.
 
 **Context:** One paragraph that gives the AI agent (and a human reader)

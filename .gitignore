@@ -1,1 +1,19 @@
+# macOS finder cruft
 .DS_Store
+
+# Python build / cache artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv / pip
+.uv/
+*.egg-info/

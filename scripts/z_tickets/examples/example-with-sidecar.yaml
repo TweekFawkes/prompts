@@ -1,0 +1,12 @@
+# Per-ticket overrides for run_tickets.py.
+# This file pairs with example-with-sidecar.md (same stem). The runner
+# auto-discovers it and merges these onto SDK_OPTIONS_BASE. See README
+# §"Per-ticket overrides" for the full list of recognized keys.
+
+# Cheap, mechanical chore — no need for Opus or max effort.
+model: haiku
+fallback_model: sonnet
+effort: low
+
+# Backend-only change; we don't need the Chrome integration.
+chrome: false

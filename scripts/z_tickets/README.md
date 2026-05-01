@@ -142,6 +142,85 @@ the runner, so you can keep notes alongside the active backlog.
 
 ---
 
+## Per-ticket overrides (optional YAML)
+
+By default every ticket runs with the SDK options at the top of
+`run_tickets.py`. You can override those on a ticket-by-ticket basis by
+attaching YAML config in either of two equivalent ways:
+
+### YAML frontmatter inside the `.md`
+
+```markdown
+---
+model: sonnet
+effort: low
+---
+
+# Make the login error message clearer
+
+**Status:** Open.
+...
+```
+
+### A sibling `.yaml` file
+
+Drop `add-foo.yaml` next to `add-foo.md` in `open/`:
+
+```yaml
+# add-foo.yaml
+model: opus
+fallback_model: sonnet
+permission_mode: acceptEdits
+```
+
+If both are present, the sibling file wins on conflict. Both are
+optional — a ticket with no YAML uses `SDK_OPTIONS_BASE` unchanged.
+
+### Recognized keys
+
+| Key | Maps to | Notes |
+|---|---|---|
+| `model` | `ClaudeAgentOptions.model` | e.g. `opus`, `sonnet`, `haiku`. |
+| `fallback_model` | `ClaudeAgentOptions.fallback_model` | Same set. |
+| `permission_mode` | `ClaudeAgentOptions.permission_mode` | `default`, `acceptEdits`, `bypassPermissions`, `plan`. |
+| `cwd` | `ClaudeAgentOptions.cwd` | Override the project root for this ticket only. |
+| `setting_sources` | `ClaudeAgentOptions.setting_sources` | YAML list, e.g. `[user, project]`. |
+| `chrome` | `extra_args["chrome"]` | `true` adds `--chrome`; `false` strips an inherited flag. |
+| `effort` | `extra_args["effort"]` | `low`, `medium`, `high`, `max`. |
+| `extra_args` | merged into `extra_args` | Mapping; merged shallowly onto inherited values. |
+| anything else | `extra_args[<key>]` | Treated as an arbitrary CLI flag passed through to `claude`. |
+
+Examples:
+
+```yaml
+# Run a cheap small ticket on Sonnet with low effort.
+model: sonnet
+effort: low
+```
+
+```yaml
+# Tighter unattended mode for a risky migration ticket.
+model: opus
+permission_mode: acceptEdits
+chrome: false
+```
+
+```yaml
+# Pass any CLI flag the runner doesn't know about.
+extra_args:
+  max-turns: 80
+```
+
+The runner logs the resolved options for each ticket, so you can
+confirm exactly what was applied:
+
+```
+ticket config       = {'model': 'sonnet', 'effort': 'low'}  (sources: frontmatter (add-foo.md))
+sdk options         = model=sonnet fallback=sonnet perm=bypassPermissions ...
+```
+
+---
+
 ## How `/dowork` works
 
 `/dowork` is a [Claude Code skill](https://docs.claude.com/en/docs/claude-code/skills)

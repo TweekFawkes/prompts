@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "claude-agent-sdk>=0.1.0",
+#   "pyyaml>=6.0",
 # ]
 # ///
 """
@@ -41,6 +42,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import signal
 import socket
 import sys
@@ -49,6 +51,8 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
+
+import yaml
 
 from claude_agent_sdk import (
     AssistantMessage,
@@ -207,6 +211,151 @@ def to_jsonable(obj: Any) -> Any:
     return repr(obj)
 
 
+# --- per-ticket YAML config ----------------------------------------------
+#
+# Each ticket may carry optional configuration that overrides
+# SDK_OPTIONS_BASE for that ticket only. Two equivalent sources are
+# supported, in increasing precedence:
+#
+#   1. YAML frontmatter at the top of the .md file:
+#
+#        ---
+#        model: sonnet
+#        effort: low
+#        ---
+#        # Ticket title
+#        ...
+#
+#   2. A sibling YAML file with the same stem (`add-foo.yaml` next to
+#      `add-foo.md`). Overrides any frontmatter in the .md file.
+#
+# Supported keys:
+#   model, fallback_model, permission_mode, cwd, setting_sources
+#       — passed directly into ClaudeAgentOptions.
+#   chrome (bool), effort (str)
+#       — routed into extra_args (CLI flags). chrome=true sends
+#         `--chrome`; chrome=false strips any inherited flag.
+#   extra_args (dict)
+#       — merged shallowly onto the inherited extra_args.
+#   anything else
+#       — treated as an extra CLI flag (key → extra_args[key] = value).
+
+FRONTMATTER_RE = re.compile(
+    r"\A---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|\Z)", re.DOTALL
+)
+
+CONFIG_TOP_LEVEL_KEYS: set[str] = {
+    "model",
+    "fallback_model",
+    "permission_mode",
+    "cwd",
+    "setting_sources",
+}
+CONFIG_BOOL_FLAG_KEYS: set[str] = {"chrome"}
+CONFIG_STRING_FLAG_KEYS: set[str] = {"effort"}
+
+
+def _parse_yaml_text(text: str, source: str, logger: logging.Logger | None) -> dict[str, Any]:
+    try:
+        data = yaml.safe_load(text) or {}
+    except yaml.YAMLError as e:
+        if logger is not None:
+            logger.warning(f"failed to parse YAML in {source}: {e!r}")
+        return {}
+    if not isinstance(data, dict):
+        if logger is not None:
+            logger.warning(
+                f"YAML in {source} did not parse to a mapping "
+                f"(got {type(data).__name__}); ignoring."
+            )
+        return {}
+    return data
+
+
+def load_ticket_config(
+    ticket: Path, logger: logging.Logger | None = None
+) -> tuple[dict[str, Any], list[str]]:
+    """Return (merged_config, sources) for a ticket.
+
+    Sources, in increasing precedence:
+      1. YAML frontmatter inside the .md file (if present).
+      2. Sibling .yaml or .yml file with the same stem (if present).
+    """
+    config: dict[str, Any] = {}
+    sources: list[str] = []
+
+    try:
+        text = ticket.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        if logger is not None:
+            logger.warning(f"could not read ticket {ticket}: {e!r}")
+        text = ""
+
+    fm_match = FRONTMATTER_RE.match(text)
+    if fm_match:
+        fm_data = _parse_yaml_text(
+            fm_match.group(1), f"frontmatter of {ticket.name}", logger
+        )
+        if fm_data:
+            config.update(fm_data)
+            sources.append(f"frontmatter ({ticket.name})")
+
+    for ext in (".yaml", ".yml"):
+        sibling = ticket.with_suffix(ext)
+        if sibling.is_file():
+            try:
+                yaml_text = sibling.read_text(encoding="utf-8", errors="replace")
+            except OSError as e:
+                if logger is not None:
+                    logger.warning(f"could not read {sibling}: {e!r}")
+                break
+            sib_data = _parse_yaml_text(yaml_text, sibling.name, logger)
+            if sib_data:
+                config.update(sib_data)
+                sources.append(f"sibling ({sibling.name})")
+            break
+
+    return config, sources
+
+
+def apply_ticket_config(
+    base: dict[str, Any], ticket_config: dict[str, Any]
+) -> dict[str, Any]:
+    """Merge a per-ticket config dict onto SDK_OPTIONS_BASE.
+
+    Returns a new dict suitable for `ClaudeAgentOptions(**resolved)`.
+    The base dict is not mutated.
+    """
+    resolved: dict[str, Any] = {**base}
+    base_extra = base.get("extra_args") or {}
+    extra: dict[str, Any] = {**base_extra}
+
+    for key, value in ticket_config.items():
+        if key == "extra_args":
+            if isinstance(value, dict):
+                extra.update(value)
+            continue
+        if key in CONFIG_TOP_LEVEL_KEYS:
+            resolved[key] = value
+            continue
+        if key in CONFIG_BOOL_FLAG_KEYS:
+            if value:
+                extra[key] = None
+            else:
+                extra.pop(key, None)
+            continue
+        if key in CONFIG_STRING_FLAG_KEYS:
+            if value is None or value is False:
+                extra.pop(key, None)
+            else:
+                extra[key] = str(value)
+            continue
+        extra[key] = value
+
+    resolved["extra_args"] = extra
+    return resolved
+
+
 # --- event rendering ------------------------------------------------------
 
 def render_block(blk: Any) -> Iterable[tuple[str, str]]:
@@ -327,7 +476,17 @@ async def run_ticket(
     runner.info(f"per-ticket text log = {text_log}")
     runner.info(f"per-ticket json log = {jsonl_log}")
 
-    options = ClaudeAgentOptions(**SDK_OPTIONS_BASE)
+    ticket_config, config_sources = load_ticket_config(ticket, runner)
+    if ticket_config:
+        runner.info(
+            f"ticket config       = {ticket_config}  "
+            f"(sources: {', '.join(config_sources)})"
+        )
+    else:
+        runner.info("ticket config       = (none — using SDK_OPTIONS_BASE)")
+
+    resolved_options = apply_ticket_config(SDK_OPTIONS_BASE, ticket_config)
+    options = ClaudeAgentOptions(**resolved_options)
     prompt = f"skill /dowork {ticket.name}"
 
     runner.info(f"prompt              = {prompt!r}")
