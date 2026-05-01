@@ -1,0 +1,10 @@
+# Logs are local + noisy + may contain secrets the agent surfaced
+# while debugging (config files, .env contents, tokens). Never publish.
+logs/*
+!logs/.gitkeep
+
+# The STOP sentinel is a runtime signal, not source.
+STOP
+
+# macOS finder cruft
+.DS_Store
