@@ -48,7 +48,7 @@ Also note: is `origin/main` ahead at all? Which PR numbers are in the `>` list (
 
 ### 2. Protect local work before touching history
 
-- **Dirty tree.** A merge/rebase refuses to run over uncommitted changes, and a stale `git checkout`/reset would eat them. Default: `git stash push -u -m "newestcode autostash <slug>"` to set the changes aside, integrate, then `git stash pop` and surface any pop-conflicts. If the changes look substantial or are clearly mid-task work the user may want to commit first, **stop and ask** whether to stash or commit rather than deciding for him. Never `git checkout -- .`, `git reset --hard`, or `git clean` to "clean up" before pulling.
+- **Dirty tree.** A merge/rebase refuses to run over uncommitted changes, and a stale `git checkout`/reset would eat them. Default: `git stash push -u -m "newestcode autostash <slug>"` to set the changes aside, integrate, then `git stash pop` and surface any pop-conflicts. If the changes look substantial or are clearly mid-task work the user may want to commit first, **stop and ask** whether to stash or commit rather than deciding for them. Never `git checkout -- .`, `git reset --hard`, or `git clean` to "clean up" before pulling.
 - **Sensitive files in the dirty set** (`.env`, `*.pem`, `*.key`, `credentials.*`, `id_*`): surface them and confirm before stashing/committing — stashes are recoverable but easy to forget.
 - **Stashes already present:** note them in the report; they survive everything this skill does, but flag them so they aren't forgotten.
 
@@ -58,7 +58,7 @@ Also note: is `origin/main` ahead at all? Which PR numbers are in the `>` list (
 |---|---|---|
 | **`main`** (canonical checkout) | behind only | `git pull --ff-only origin main` |
 | **`main`** | diverged (local commits on main) | **Stop and ask.** Local commits on `main` are unusual — the user decides rebase-onto-main vs. moving them to a branch. Don't force it. |
-| **feature branch** | behind only / diverged | Default **merge**: `git merge origin/main` (no force-push needed, preserves the branch). Use **rebase** (`git rebase origin/main`) only if the user wants linear history — and only if the branch is unpushed or he accepts a later `--force-with-lease`. |
+| **feature branch** | behind only / diverged | Default **merge**: `git merge origin/main` (no force-push needed, preserves the branch). Use **rebase** (`git rebase origin/main`) only if the user wants linear history — and only if the branch is unpushed or the user accepts a later `--force-with-lease`. |
 | **detached HEAD** | any | **Stop and ask.** Detached HEAD usually means an automation/codex worktree; integrating could strand commits. Surface `git log --oneline -3` and let the user point you at a branch. |
 | **up to date** (any branch) | no `>` commits | Nothing to do — skip to phase 6. |
 
@@ -70,7 +70,7 @@ Rules that apply to every integration:
 ### 4. Restore protected work
 
 - If you stashed in phase 2: `git stash pop`. If it conflicts, **stop**, show the conflicted files, and let the user resolve — do not drop the stash. Confirm the stash is gone from `git stash list` only after a clean pop.
-- Confirm the working tree matches the user's intent: the newer code is in, and his in-progress changes are back on top.
+- Confirm the working tree matches the user's intent: the newer code is in, and their in-progress changes are back on top.
 
 ### 5. Did "latest code" actually reach what's *running*? (drift check)
 
@@ -87,7 +87,7 @@ If the pulled diff is docs/tickets/tests-only, say so — no redeploy or resync 
 Redeploying is heavy and reverts dev to whatever checkout runs it. So treat it as **opt-in**, not automatic:
 
 - **Offer it when:** phase 5 found runtime-affecting changes AND we're on the canonical `main` checkout AND (the invocation asked for it, e.g. "/newestcode and redeploy dev", OR the user confirms). Run the project's dev-deploy command. If the deploy has a known post-restart window where the running service errors transiently, expect it and re-verify once it has reconnected.
-- **Do NOT redeploy when:** on a feature/detached worktree (it would silently revert dev), or the diff was docs/tickets/tests-only, or the user didn't ask and the change is low-risk. Say what you'd run and let him decide.
+- **Do NOT redeploy when:** on a feature/detached worktree (it would silently revert dev), or the diff was docs/tickets/tests-only, or the user didn't ask and the change is low-risk. Say what you'd run and let the user decide.
 - This skill never deploys to test/stage/prod. Prod is gated regardless.
 
 ### 7. Final report

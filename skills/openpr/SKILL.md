@@ -55,7 +55,7 @@ If `git status --short` is empty AND `origin/main..HEAD` is empty AND no open PR
 - Add **specific files by name** — never `git add -A` or `git add .`. List the paths from `git status --short` and add exactly those (minus anything sensitive from step 2).
 - Match the repo's commit style — read `git log -5 --format='%B'`. On this repo that is: a capitalized, imperative **subject line** (≤72 chars), a blank line, then a `-`-bulleted body explaining the *why* and the user-visible shape of the change. (It is NOT lowercase Conventional-Commits.)
 - Write the message via HEREDOC. End the commit message with the trailer the harness mandates:
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` (use whatever model the harness's current git guidance names).
+  `Co-Authored-By: <model> <noreply@anthropic.com>` — use whatever model the harness's current git guidance names right now; never copy a hardcoded model name from an example, they go stale every release.
 - Never use `--amend`, `--no-verify`, or `-n`. If a pre-commit hook fails, fix the underlying cause and make a fresh commit — do not bypass it without explicit user approval.
 - After committing, run `git status` to confirm a clean tree.
 

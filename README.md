@@ -13,7 +13,7 @@ lightweight XML-tagged context blocks.
 | Directory | Contents |
 |---|---|
 | [`claude_md/`](claude_md/) | A flagship "AI Coding Agent Guidelines" doc (`claude.md`) plus Claude Code config templates (`settings.json_*` permission sets, `zshrc_*` aliases). |
-| [`skills/`](skills/) | Eleven [Claude Code](https://claude.com/claude-code) skills for an agent-driven, ticket-based workflow (draft → work → ship via worktrees & PRs). See [`skills/README.md`](skills/README.md). |
+| [`skills/`](skills/) | Twelve [Claude Code](https://claude.com/claude-code) skills for an agent-driven, ticket-based workflow (draft → work → ship via worktrees & PRs). See [`skills/README.md`](skills/README.md). |
 | [`prompt_engineering_best_practices/`](prompt_engineering_best_practices/) | Vendor prompting guides for specific model releases (Anthropic Claude Opus, OpenAI GPT-4.1/5.x). |
 | [`techstack/`](techstack/) | One note per technology — FastAPI, Vue, SQLite, Cloudflare (D1/R2), Fly.io, `uv`, and more. |
 | [`context/`](context/) | Reusable, XML-tagged context snippets (file locations, URLs) — values redacted, meant as fill-in templates. |

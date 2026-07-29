@@ -32,6 +32,23 @@ The helper creates a timestamped `agent/<task-slug>-<YYYYMMDDHHMMSS>` branch by 
 
 Generated branch/path collisions in the same second get a deterministic numeric suffix such as `-2`. A custom `--path` must be outside the tracked repository.
 
+### Seeding gitignored local state into the new worktree
+
+A fresh worktree only contains *tracked* files — anything gitignored (env files, local secrets, seeded config) simply isn't there, even though the project may not run without it. If your project needs that, set it up once:
+
+```bash
+cp "$repo_root/.claude/skills/gitready/scripts/worktree-seed-paths.example" "$repo_root/.worktree-seed-paths"
+# edit .worktree-seed-paths to list what your project actually needs, then commit it
+```
+
+Then after creating a worktree (or as `/dowork`'s step 0 — see that skill):
+
+```bash
+bash "$repo_root/.claude/skills/gitready/scripts/seed-worktree.sh" --worktree <new-worktree-path>
+```
+
+It's a safe no-op until `.worktree-seed-paths` exists, skips files already present in the worktree (never clobbers local edits — pass `--force` to override), and no-ops entirely when run from the main checkout itself. See `--help` for the full option list.
+
 ## Workflow
 
 1. Inspect current Git state:
@@ -44,7 +61,8 @@ git worktree list
 
 2. If the source worktree has uncommitted changes, say clearly that those changes will not be present in the new worktree. Do not copy, stash, or patch them into the new worktree unless the user explicitly asks.
 3. Create the worktree with the helper script. Prefer `origin/main` as the base after `git fetch --prune origin`; fall back to `main`, then `HEAD`, only when needed.
-4. Move into the new worktree and re-read the local instructions there:
+4. If the repo has a `.worktree-seed-paths` file, run `scripts/seed-worktree.sh --worktree <new-worktree-path>` before doing anything else in the new worktree (see "Seeding gitignored local state" above). Skip silently if the file doesn't exist.
+5. Move into the new worktree and re-read the local instructions there:
 
 ```bash
 cd <new-worktree-path>
@@ -52,15 +70,15 @@ sed -n '1,220p' CLAUDE.md
 [ -f tasks/lessons.md ] && sed -n '1,220p' tasks/lessons.md
 ```
 
-5. Install or prepare dependencies inside the new worktree only when the task needs it. Avoid sharing mutable dependency directories between agents.
-6. Before handing off, report the source repo, new worktree path, branch, base ref, dirty-state warning if any, and the next command the agent should run.
+6. Install or prepare dependencies inside the new worktree only when the task needs it. Avoid sharing mutable dependency directories between agents.
+7. Before handing off, report the source repo, new worktree path, branch, base ref, dirty-state warning if any, and the next command the agent should run.
 
 ## Multi-Agent Hygiene
 
 - Keep each agent on a separate branch. Do not let two agents commit to the same branch unless the user explicitly asks for a handoff.
 - Keep worktrees outside the tracked repo, preferably in the sibling `<repo>-worktrees/` directory, so the source worktree does not gain noisy untracked folders.
 - Use per-worktree `.venv`, `node_modules`, build outputs, and caches. Do not reuse an environment that another agent may mutate while tests are running.
-- Treat `.env` files and secrets as local state. If a worktree needs one, first verify it is ignored, then copy only what is needed. Never commit secrets.
+- Treat `.env` files and secrets as local state. If a worktree needs one, first verify it is ignored, then copy only what is needed — `scripts/seed-worktree.sh` automates this (see above). Never commit secrets.
 - For Docker Compose or container stacks, use a unique `COMPOSE_PROJECT_NAME` per worktree and ensure ports, volumes, and database files do not collide before starting a second stack.
 - Preserve any architecture invariants documented in your `CLAUDE.md` / `AGENTS.md`, and run the project's smoke/health check as the proof step before calling implementation work done.
 - If the local tool supports worktree comments or thread titles, record the task slug, branch, path, and current status there so agents can see who owns what.

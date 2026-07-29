@@ -1,0 +1,20 @@
+# Copy this file to .worktree-seed-paths at your repo root and edit the list
+# below to match what YOUR project needs. seed-worktree.sh reads it to know
+# what gitignored local state to copy from the main checkout into a freshly
+# created worktree.
+#
+# One path per line, relative to the repo root. Files and directories both
+# work (directories are copied recursively). Blank lines and lines starting
+# with # are ignored.
+#
+# Only list state that's local, gitignored, and needed for the code to run —
+# never list anything meant to be unique per worktree (e.g. a port number
+# baked into a config file), and never list production credentials a
+# worktree has no business holding. If your project's env file mixes dev and
+# prod secrets, redact the prod ones after the copy — see seed-worktree.sh's
+# --help for where to add that.
+
+# .env
+# .env.local
+# config/local.yaml
+# secrets/dev/

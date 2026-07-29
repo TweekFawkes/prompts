@@ -68,7 +68,7 @@ This is the FIRST half of "rescue" — anything real in the working tree should 
 - **Untracked files count.** New `z_tickets/**` files, new code, new docs — if they're real work, commit them so they land on `main` through the merge. If an untracked file is genuinely throwaway, say so in the report rather than silently committing it. When unsure whether an untracked file should land, stop and ask.
 - Match the repo's commit style — read `git log -5 --format='%B'`: a capitalized, imperative **subject line** (≤72 chars), a blank line, then a `-`-bulleted body explaining the *why* and the user-visible shape of the change. (NOT lowercase Conventional-Commits.)
 - Write the message via HEREDOC. End it with the harness-mandated trailer:
-  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` (use whatever model the harness's current git guidance names).
+  `Co-Authored-By: <model> <noreply@anthropic.com>` — use whatever model the harness's current git guidance names right now; never copy a hardcoded model name from an example, they go stale every release.
 - Never use `--amend`, `--no-verify`, or `-n`. If a pre-commit hook fails, fix the cause and make a fresh commit — do not bypass without explicit approval.
 - After committing, run `git status --porcelain` to confirm a clean tree.
 
@@ -121,11 +121,16 @@ gh pr merge <number> --merge                # merge commit, matches repo style
 
 - Do **not** pass `--delete-branch`: git can't delete a branch that's checked out in a worktree, and you're deliberately keeping this worktree alive until the user confirms the delete. (The stale remote branch can be cleaned up later.)
 - **If the merge is blocked** by branch protection (required reviews/failing checks/conflicts), stop and surface exactly why. Only use `--admin` to override if the user has the rights AND explicitly approves it — never silently.
-- After merging, sync local refs so verification sees the truth:
+- After merging, sync local refs so verification sees the truth. If you're working from a **linked worktree** (created by `gitready` or similar), `main` is checked out somewhere else — usually the original clone — and a plain `git checkout main` from here will fail ("already used by worktree at …"). Find that worktree first and update it in place:
 
 ```
 git fetch origin
-git checkout main && git pull --ff-only origin main && git checkout -    # update local main; return to branch
+MAIN_WT="$(git worktree list --porcelain | awk '/^worktree /{p=$2} /^branch refs\/heads\/main$/{print p}')"
+if [ -n "$MAIN_WT" ]; then
+  git -C "$MAIN_WT" pull --ff-only origin main       # main lives in a different worktree — update it there
+else
+  git checkout main && git pull --ff-only origin main && git checkout -   # single checkout — safe to switch in place
+fi
 ```
 
 ### 7. Verify the worktree is safe to delete
@@ -160,7 +165,7 @@ Print a concise summary. Be precise — this is what the user acts on:
 3. **Safe-to-delete verdict:** an explicit **GO** or **NO-GO**.
    - GO → "Deleting this worktree loses nothing: working tree clean, all N commits on `main`, no untracked work, stash list `<empty | listed>`."
    - NO-GO → the precise list of what is NOT yet on `main` and what you did about it (rescued how, or still pending the user's decision).
-4. **Reminder:** you did NOT delete the worktree. the user removes it with `git worktree remove <path>` (add `--force` only if he accepts the listed leftovers) once he's satisfied with the GO.
+4. **Reminder:** you did NOT delete the worktree. The user removes it with `git worktree remove <path>` (add `--force` only if they accept the listed leftovers) once they're satisfied with the GO.
 
 ## When to stop and ask
 

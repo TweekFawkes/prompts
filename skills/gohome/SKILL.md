@@ -45,7 +45,7 @@ If `git status` shows nothing AND `main..HEAD` is empty, there is nothing to lan
 
 - Add **specific files** by name — never `git add -A` or `git add .`. Skip anything that looks like a secret (`.env`, `*.backup.*`, `credentials.*`) and warn the user if such a file is staged.
 - Read `git log --oneline -5` to mirror the project's commit style (lowercase, topic-prefixed, no Conventional-Commits noise).
-- Write the message via HEREDOC. Lead with one short subject line (`<topic>: <imperative>` under ~72 chars), then a blank line, then a body that captures the why and the user-visible shape of the change. End with the standard `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` trailer.
+- Write the message via HEREDOC. Lead with one short subject line (`<topic>: <imperative>` under ~72 chars), then a blank line, then a body that captures the why and the user-visible shape of the change. If your harness's git guidance mandates a co-author trailer (e.g. `Co-Authored-By: <model> <noreply@anthropic.com>`), include it using whatever model that guidance names right now — never copy a hardcoded model name from an example, they go stale every release.
 - Never use `--amend`, `--no-verify`, or `-n`. If a pre-commit hook fails, fix the underlying issue and create a fresh commit.
 - After the commit, run `git status` to confirm a clean tree.
 

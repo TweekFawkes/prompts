@@ -1,3 +1,21 @@
+# Secrets / credentials — never commit these.
+# Several docs here (e.g. techstack/cloudflare.md) tell you to keep an API
+# token in a local .env; these patterns keep that from being committed by
+# accident if you use this repo as a working template.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials
+credentials.*
+id_rsa*
+id_ed25519*
+.aws/
+.ssh/
+
 # macOS finder cruft
 .DS_Store
 
